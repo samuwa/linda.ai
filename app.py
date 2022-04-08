@@ -7,6 +7,134 @@ import itertools
 import fuzzywuzzy
 
 
+
+
+
+
+
+# ======== Funtions ==========
+
+# 1.- create df from csv
+def read_file(path):
+    df = pd.read_csv(path, skipinitialspace=True)
+    return df
+
+# 2.- find duplicates
+def find_duplicates(df, logger):
+    dups = list(df[df.duplicated()].index)
+    # Creating a dataframe with the condition of only rows duplicated
+    # using the .index attribute to get the index object
+    # convert to list to get a list of row numbers
+
+    # Log dubs
+    logger["duplicates"] = dups
+    return
+
+# 3.- Remove all duplicates
+def remove_all_duplicates(df):
+    df.drop_duplicates(inplace=True, ignore_index=True)
+
+    return
+
+# 4.- Remove specific row
+def remove_row(df, row):
+    df.drop(row, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    return
+
+def remove_no_reset(df,row):
+    df.drop(row, inplace=True)
+    return
+
+# 5.- Convert column to numeric
+def set_numeric(col):
+    col = pd.to_numeric(col, errors="coerce")
+    return
+
+# 6.- Convert column to date
+def set_date(col):
+    # date_formates = ["21 June, 2018", "12/11/2018 09:15:32", "April-21" ]
+    date_formats = ["%d %B, %Y", "%d/%m/%Y %H:%M:%S", "%B-%y", "%d %B, %Y", "%m/%d/Y"] # Can add different date formats to this list to test
+    for x in date_formats:
+        col = pd.to_datetime(col, errors="ignore", format= f"{x}")
+
+    col = pd.to_datetime(col, errors="coerce") # To remove errors in the columns like strings or numbers
+    return col
+
+# 7.- Find missing values in
+# Three returns:
+    # [0] = Dict of columns with missing rows
+    # [1] = all rows containing missing values
+    # [2] = how many rows have missing values
+def find_missing(df):
+    missing = {}
+    every = []
+    for col in df.columns:
+        missing[col] = df[df[col].isnull()].index.tolist()
+        for x in missing[col]:
+            every.append(x)
+
+    return missing, set(every), len(set(every))
+
+# 8.- Replace missing with column average
+def missing_average(col):
+    col.fillna(col.mean(), inplace=True)
+    return
+
+# 9.- Replace missing with 0
+def missing_zeros(col):
+    col.fillna(0, inplace=True)
+    return
+
+# 10.- sort values
+'''
+Use pandas sorting function
+DataFrame.sort_values(by, axis=0, ascending=True, inplace=False, kind='quicksort', na_position='last', ignore_index=False, key=None)
+'''
+
+# 11.- find outliers
+def find_outliers(df, col):
+    colb = col.fillna(col.mean()) # Temporarily replace NaN with the column mean to prevent errors when calculating z-score
+    alist = df[(np.abs(stats.zscore(colb))>3)].index.to_list()
+    return alist
+
+# 12.-  replace outliers with mean
+def outliers_average(df, col, outliers): # This works because when sorting ignore_index = True
+    for x in outliers:
+        df.replace({col:{df.iloc[x][col]:df[col].mean()}}, inplace=True)
+    return
+
+# 13.- Replace outliers with zeros
+def outliers_zeros(df, col, outliers): # This works because when sorting ignore_index = True
+    for x in outliers:
+        df.replace({col:{df.iloc[x][col]:0}}, inplace=True)
+    return
+
+# 14.- find string combinations
+def get_combinations(col):
+    uniques = list(set(col))
+    uniques = [x for x in uniques if str(x) != 'nan']
+    combs = combinations(uniques, 2)
+    return list(combs)
+
+# 15.- find fuzzy matches in combinations
+def find_matches(alist):
+    finds = []
+    for comb in alist:
+        aratio = fuzz.ratio(comb[0].lower(), comb[1].lower())
+        part_ratio = fuzz.partial_ratio(comb[0].lower(), comb[1].lower())
+
+        if aratio > 80 or part_ratio > 70:
+            finds.append(comb)
+    return finds
+
+def df_to_csv(df):
+    csv = df.to_csv(index=False).encode('utf-8')
+    return csv
+
+
+
+
 # Variables
     #-- Main variables --#
 
@@ -52,10 +180,10 @@ file_input = st.container()
 with file_input:
     st.session_state.file = st.file_uploader("Upload CSV") # Create upload file widget
     try:
-        st.session_state.df = fs.read_file(st.session_state.file) # turn file into df
+        st.session_state.df = read_file(st.session_state.file) # turn file into df
         #st.write(st.session_state.df.head()) # display df.head() if there is a file uploaded
         # RUN DIAGNOSIS #
-        fs.find_duplicates(st.session_state.df, st.session_state.diagnosis)
+        find_duplicates(st.session_state.df, st.session_state.diagnosis)
 
     except ValueError:
         pass
@@ -82,7 +210,7 @@ else:
 
             # If selected method == Remove all - remove all duplicates
             if st.session_state.method_selection["duplicates"] == method_options[1]:
-                fs.remove_all_duplicates(st.session_state.df)
+                remove_all_duplicates(st.session_state.df)
 
             # If == Inspect - show each duplicated row and offer keep/drop
             elif st.session_state.method_selection["duplicates"] == method_options[2]:
@@ -90,7 +218,7 @@ else:
                     remove = st.checkbox(f"Remove row {row}", key=row)
                     st.write(st.session_state.df.loc[[row]])
                     if remove == True:
-                        fs.remove_no_reset(st.session_state.df, row) # Wait for all inspection before resetting
+                        remove_no_reset(st.session_state.df, row) # Wait for all inspection before resetting
                 st.session_state.df.reset_index(drop=True, inplace=True)
 
 
@@ -135,7 +263,7 @@ else:
             # For Dates
             elif st.session_state.method_selection["dtypes"][col] == data_types[2]:
                 # st.session_state.df[col] = pd.to_datetime(st.session_state.df[col], errors="coerce")
-                st.session_state.df[col] = fs.set_date(st.session_state.df[col])
+                st.session_state.df[col] = set_date(st.session_state.df[col])
                 st.session_state.df[col] = st.session_state.df[col].dt.date
 
     #ion_state.df)
@@ -220,14 +348,14 @@ else:
     with missing:
         st.subheader("Missing values")
         # Find missing and add to diagnosis
-        st.session_state.diagnosis["missing_general"] = fs.find_missing(st.session_state.df)
+        st.session_state.diagnosis["missing_general"] = find_missing(st.session_state.df)
 
         # missing_general method selection
         st.session_state.method_selection["missing_general"] = st.selectbox(f"The dataset contains {st.session_state.diagnosis['missing_general'][2]} rows with missing value(s)",options=method_options)
 
         # Remove all method
         if st.session_state.method_selection["missing_general"] == method_options[1]:
-            fs.remove_row(st.session_state.df, st.session_state.diagnosis["missing_general"][1])
+            remove_row(st.session_state.df, st.session_state.diagnosis["missing_general"][1])
 
         # Inspect
         elif st.session_state.method_selection["missing_general"] == method_options[2]: # If inspect
@@ -241,7 +369,7 @@ else:
                     )
                     # If remove
                     if st.session_state.method_selection[f"missing_inspect_{col}"] == method_options[1]:
-                        fs.remove_row(st.session_state.df, st.session_state.diagnosis["missing_general"][0][col])
+                        remove_row(st.session_state.df, st.session_state.diagnosis["missing_general"][0][col])
 
                 # For Numeric
                 elif st.session_state.method_selection["dtypes"][col] == data_types[1] and len(st.session_state.diagnosis["missing_general"][0][col]) > 0:
@@ -250,13 +378,13 @@ else:
                         method_numeric_options)
                     # If remove all
                     if st.session_state.method_selection[f"missing_inspect_{col}"] == method_numeric_options[1]:
-                        fs.remove_row(st.session_state.df, st.session_state.diagnosis["missing_general"][0][col])
+                        remove_row(st.session_state.df, st.session_state.diagnosis["missing_general"][0][col])
                     # Elif impute average
                     elif st.session_state.method_selection[f"missing_inspect_{col}"] == method_numeric_options[2]:
-                        fs.missing_average(st.session_state.df[col])
+                        missing_average(st.session_state.df[col])
                     # Elif replace with zeros
                     elif st.session_state.method_selection[f"missing_inspect_{col}"] == method_numeric_options[3]:
-                        fs.missing_zeros(st.session_state.df[col])
+                        missing_zeros(st.session_state.df[col])
 
         #st.write(st.session_state.df)
 
@@ -267,7 +395,7 @@ else:
         st.session_state.diagnosis["outliers"] = dict.fromkeys([col for col in st.session_state.df.columns if st.session_state.method_selection["dtypes"][col] == data_types[1]])
         # Get outliers for each numeric column
         for col in st.session_state.diagnosis["outliers"]:
-            st.session_state.diagnosis["outliers"][col] = fs.find_outliers(st.session_state.df, st.session_state.df[col])
+            st.session_state.diagnosis["outliers"][col] = find_outliers(st.session_state.df, st.session_state.df[col])
 
         # Create method selection for numeric rows WITH detected outliers
         st.session_state.method_selection["outliers"] = dict.fromkeys([x for x in st.session_state.diagnosis["outliers"] if st.session_state.diagnosis["outliers"][x] != None])
@@ -278,14 +406,14 @@ else:
                     method_numeric_options
                 )
                 if st.session_state.method_selection["outliers"][col] == method_numeric_options[1]:
-                    fs.remove_row(st.session_state.df, st.session_state.diagnosis["outliers"][col])
+                    remove_row(st.session_state.df, st.session_state.diagnosis["outliers"][col])
                 # Elif impute average
                 else:
                     if st.session_state.method_selection["outliers"][col] == method_numeric_options[2]:
-                        fs.outliers_average(st.session_state.df, col, st.session_state.diagnosis["outliers"][col])
+                        outliers_average(st.session_state.df, col, st.session_state.diagnosis["outliers"][col])
                     # Elif replace with zeros
                     elif st.session_state.method_selection[f"outliers"][col] == method_numeric_options[3]:
-                        fs.outliers_zeros(st.session_state.df, col, st.session_state.diagnosis["outliers"][col])
+                        outliers_zeros(st.session_state.df, col, st.session_state.diagnosis["outliers"][col])
 
 
                     st.dataframe(st.session_state.df.iloc[st.session_state.diagnosis["outliers"][col]])
@@ -300,7 +428,7 @@ else:
             # Only use columns with dtype Text
             if st.session_state.method_selection["dtypes"][col] == data_types[0]:
                 # Get fuzzy matches
-                st.session_state.diagnosis["fuzzy"][col] = fs.find_matches(fs.get_combinations(st.session_state.df[col]))
+                st.session_state.diagnosis["fuzzy"][col] = find_matches(get_combinations(st.session_state.df[col]))
                 #st.write(st.session_state.diagnosis["fuzzy"][col])
         for col in st.session_state.diagnosis["fuzzy"]:
             if st.session_state.diagnosis["fuzzy"][col] != []:
@@ -324,7 +452,7 @@ else:
 
     download = st.container()
     with download:
-        st.session_state.clean = fs.df_to_csv(st.session_state.df)
+        st.session_state.clean = df_to_csv(st.session_state.df)
         st.download_button(
             label="Download clean data",
             data=st.session_state.clean,
