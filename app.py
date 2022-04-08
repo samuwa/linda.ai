@@ -1,4 +1,3 @@
-import functions as fs
 import streamlit as st
 import pandas as pd
 import datetime
