@@ -86,10 +86,8 @@ def missing_zeros(col):
     return
 
 # 10.- sort values
-'''
-Use pandas sorting function
-DataFrame.sort_values(by, axis=0, ascending=True, inplace=False, kind='quicksort', na_position='last', ignore_index=False, key=None)
-'''
+#Use pandas sorting function
+#DataFrame.sort_values(by, axis=0, ascending=True, inplace=False, kind='quicksort', na_position='last', ignore_index=False, key=None)
 
 # 11.- find outliers
 def find_outliers(df, col):
