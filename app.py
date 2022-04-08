@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import scipy
-import itertools
-import fuzzywuzzy
-
+from scipy import stats
+from itertools import combinations
+from fuzzywuzzy import fuzz
+import numpy as np
 
 
 
