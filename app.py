@@ -272,7 +272,7 @@ else:
         st.subheader("Sort Values")
         st.session_state.method_selection["sorting"] = st.multiselect("Select columns in order of priority for sorting values",
                                                                       options= st.session_state.method_selection["selection"])
-        if st.session_state.method_selection["sorting"] != "":
+        if st.session_state.method_selection["sorting"] != [] and st.session_state.method_selection["sorting"] != None:
             st.session_state.df.sort_values(st.session_state.method_selection["sorting"], inplace=True, ignore_index=True)
 
     # Filter values
