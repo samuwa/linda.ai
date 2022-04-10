@@ -175,7 +175,7 @@ with header:
 # File input
 file_input = st.container()
 with file_input:
-    st.session_state.file = st.file_uploader("Upload CSV") # Create upload file widget
+    st.session_state.file = st.file_uploader("Upload CSV", type="csv") # Create upload file widget
     try:
         st.session_state.df = read_file(st.session_state.file) # turn file into df
         #st.write(st.session_state.df.head()) # display df.head() if there is a file uploaded
